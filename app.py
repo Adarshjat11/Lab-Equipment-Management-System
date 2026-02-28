@@ -32,7 +32,7 @@ if mode == "Student":
     with st.expander("🧑‍🎓 Student Verification", expanded=True):
         roll_no = st.text_input("Roll / Enrollment Number")
 
-        if st.button("Verify Student"):
+        if st.button("Verify Student", key="verify_student_btn"):
             match = students[students["roll_no"] == roll_no]
 
             if match.empty:
@@ -63,7 +63,8 @@ if mode == "Student":
 
     item = st.selectbox(
         "Select Equipment",
-        equipment["equipment_name"].unique()
+        equipment["equipment_name"].unique(),
+        key="equipment_select"
     )
 
     row = equipment[equipment["equipment_name"] == item].iloc[0]
@@ -80,10 +81,13 @@ if mode == "Student":
         "Quantity",
         min_value=1,
         max_value=int(row["available_quantity"]),
-        step=1
+        step=1,
+        key="quantity_input"
     )
 
-    if st.button("📦 Issue Equipment"):
+    # 🔥 FIXED ISSUE BUTTON + EMAIL LOGIC
+    if st.button("📦 Issue Equipment", key="issue_equipment_btn"):
+
         equipment, issued = issue_equipment(
             equipment,
             issued,
@@ -94,18 +98,21 @@ if mode == "Student":
             item,
             qty
         )
+
         save_data(equipment, issued, students)
 
         try:
             send_issue_email(
+                student["roll_no"],
                 student["student_name"],
                 student["student_email"],
                 student["semester"],
                 item,
                 qty
             )
-        except Exception:
-            st.warning("Email service not configured")
+            st.success("📧 Admin notified")
+        except Exception as e:
+            st.error(f"Email Error: {e}")
 
         st.success("✅ Equipment issued successfully")
 
@@ -163,7 +170,7 @@ if mode == "Admin":
 
     # -------- STUDENT MANAGEMENT --------
     with st.expander("🎓 Student Management"):
-        with st.form("add_student"):
+        with st.form("add_student_form"):
             roll = st.text_input("Roll / Enrollment No")
             name = st.text_input("Student Name")
             email = st.text_input("Student Email")
@@ -185,9 +192,10 @@ if mode == "Admin":
 
         roll_remove = st.selectbox(
             "Remove Student",
-            students["roll_no"]
+            students["roll_no"],
+            key="remove_student_select"
         )
-        if st.button("Remove Student"):
+        if st.button("Remove Student", key="remove_student_btn"):
             students = remove_student(students, roll_remove)
             save_data(equipment, issued, students)
             st.success("Student removed")
@@ -199,8 +207,8 @@ if mode == "Admin":
         st.dataframe(active, use_container_width=True)
 
         if not active.empty:
-            idx = st.selectbox("Select issue", active.index)
-            if st.button("Mark Returned"):
+            idx = st.selectbox("Select issue", active.index, key="return_select")
+            if st.button("Mark Returned", key="return_btn"):
                 equipment, issued = return_equipment(
                     equipment, issued, idx
                 )
@@ -211,7 +219,8 @@ if mode == "Admin":
     with st.expander("🎓 Students by Semester"):
         sem = st.selectbox(
             "Semester",
-            sorted(students["semester"].astype(str).unique())
+            sorted(students["semester"].astype(str).unique()),
+            key="semester_filter"
         )
         st.dataframe(
             students[students["semester"].astype(str) == sem],
