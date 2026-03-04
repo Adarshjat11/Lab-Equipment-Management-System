@@ -47,11 +47,21 @@ if mode == "Student":
         st.stop()
 
     student = st.session_state.student
-    st.info(
-        f"👤 {student['student_name']} | "
-        f"{student['student_email']} | "
-        f"Semester {student['semester']}"
-    )
+
+    # 🔥 Student Logout Button
+    col1, col2 = st.columns([4,1])
+    with col1:
+        st.info(
+            f"👤 {student['student_name']} | "
+            f"{student['student_email']} | "
+            f"Semester {student['semester']}"
+        )
+    with col2:
+        if st.button("🚪 Logout", key="student_logout"):
+            st.session_state.verified = False
+            st.session_state.student = None
+            st.success("Logged out successfully")
+            st.rerun()
 
     # -------- ISSUE EQUIPMENT --------
     st.divider()
@@ -74,7 +84,6 @@ if mode == "Student":
 
     st.subheader("📄 Description")
     st.write(row.get("description", "No description provided."))
-
     st.info(f"Available Quantity: {int(row['available_quantity'])}")
 
     qty = st.number_input(
@@ -85,7 +94,6 @@ if mode == "Student":
         key="quantity_input"
     )
 
-    # 🔥 FIXED ISSUE BUTTON + EMAIL LOGIC
     if st.button("📦 Issue Equipment", key="issue_equipment_btn"):
 
         equipment, issued = issue_equipment(
@@ -116,18 +124,42 @@ if mode == "Student":
 
         st.success("✅ Equipment issued successfully")
 
+
 # ======================== ADMIN ==========================
 if mode == "Admin":
-    st.header("🛠️ Admin Login")
+    st.header("🛠️ Admin Portal")
 
-    admin_email = st.text_input("Admin Email")
-    admin_password = st.text_input("Password", type="password")
+    if "admin_logged_in" not in st.session_state:
+        st.session_state.admin_logged_in = False
+        st.session_state.admin_email = None
 
-    if admin_email not in admins or admins[admin_email] != admin_password:
-        st.warning("Invalid admin credentials")
+    # -------- LOGIN SYSTEM --------
+    if not st.session_state.admin_logged_in:
+
+        admin_email = st.text_input("Admin Email")
+        admin_password = st.text_input("Password", type="password")
+
+        if st.button("Login", key="admin_login_btn"):
+            if admin_email in admins and admins[admin_email] == admin_password:
+                st.session_state.admin_logged_in = True
+                st.session_state.admin_email = admin_email
+                st.success("Login successful")
+                st.rerun()
+            else:
+                st.error("Invalid admin credentials")
+
         st.stop()
 
-    st.success(f"Welcome {admin_email}")
+    # -------- ADMIN HEADER WITH LOGOUT --------
+    col1, col2 = st.columns([4,1])
+    with col1:
+        st.success(f"Welcome {st.session_state.admin_email}")
+    with col2:
+        if st.button("🚪 Logout", key="admin_logout"):
+            st.session_state.admin_logged_in = False
+            st.session_state.admin_email = None
+            st.success("Logged out successfully")
+            st.rerun()
 
     # -------- DASHBOARD --------
     with st.expander("📊 Dashboard", expanded=True):
@@ -136,7 +168,6 @@ if mode == "Admin":
         c1.metric("Total Issued", metrics["total_issued"])
         c2.metric("Active", metrics["active"])
         c3.metric("Returned", metrics["returned"])
-
         st.bar_chart(equipment_usage_stats(issued))
 
     # -------- INVENTORY --------
@@ -195,6 +226,7 @@ if mode == "Admin":
             students["roll_no"],
             key="remove_student_select"
         )
+
         if st.button("Remove Student", key="remove_student_btn"):
             students = remove_student(students, roll_remove)
             save_data(equipment, issued, students)
